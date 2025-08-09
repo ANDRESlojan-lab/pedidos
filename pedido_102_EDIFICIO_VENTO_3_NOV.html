@@ -1,0 +1,221 @@
+
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Confirmar Pedido #102</title>
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    padding: 20px;
+                    font-size: 16px;
+                    background-color: #f8f9fa;
+                }
+                h2 {
+                    color: #2c3e50;
+                    text-align: center;
+                    font-size: 24px;
+                }
+                table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-top: 20px;
+                }
+                th, td {
+                    border: 1px solid #ccc;
+                    padding: 10px;
+                    text-align: center;
+                    font-size: 14px;
+                }
+                td[contenteditable="true"], .editable {
+                    background-color: #fdfdfd;
+                    border: 1px dashed #aaa;
+                    padding: 5px;
+                }
+                .btn {
+                    background-color: #28a745;
+                    color: white;
+                    padding: 12px 25px;
+                    text-decoration: none;
+                    display: inline-block;
+                    margin-top: 25px;
+                    border: none;
+                    border-radius: 6px;
+                    font-size: 16px;
+                    cursor: pointer;
+                    transition: background-color 0.3s ease;
+                }
+                .btn-azul {
+                    background-color: #007bff;
+                }
+                .btn:hover {
+                    background-color: #218838;
+                }
+                @media (max-width: 600px) {
+                    body { padding: 10px; font-size: 15px; }
+                    th, td { font-size: 13px; padding: 8px; }
+                    h2 { font-size: 20px; }
+                    .btn { width: 100%; font-size: 16px; }
+                }
+                #feedback-message {
+                    margin-top: 15px;
+                    padding: 10px;
+                    border-radius: 5px;
+                    text-align: center;
+                    display: none; /* Oculto por defecto */
+                }
+                .success {
+                    background-color: #d4edda;
+                    color: #155724;
+                }
+                .error {
+                    background-color: #f8d7da;
+                    color: #721c24;
+                }
+            </style>
+            <script>
+                // URL del script de Google Apps Script, generada desde Python.
+                const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwm71GI-XE7FmNYqUkRyuGAOnxIfbpjqz2Jaq9qiURRWIdPujNHmzEQBNiPX5d5eDhK/exec";
+
+                function agregarFila() {
+                    const tabla = document.querySelector("#tabla-materiales tbody");
+                    const fila = document.createElement("tr");
+                    fila.innerHTML = `
+                        <td contenteditable="true"></td>
+                        <td contenteditable="true"></td>
+                        <td contenteditable="true"></td>
+                        <td contenteditable="true"></td>
+                    `;
+                    tabla.appendChild(fila);
+                }
+
+                async function guardarEnDrive(pedido, obra, materiales, observaciones) {
+                    const feedbackDiv = document.getElementById('feedback-message');
+                    feedbackDiv.style.display = 'block';
+                    feedbackDiv.className = '';
+                    feedbackDiv.innerText = 'Guardando en Google Drive...';
+                    
+                    const data = {
+                        numero_pedido: pedido,
+                        obra: obra,
+                        materiales: materiales,
+                        observaciones: observaciones
+                    };
+
+                    try {
+                        const response = await fetch(APPS_SCRIPT_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(data)
+                        });
+                        const text = await response.text();
+                        console.log("Respuesta de Apps Script:", text);
+
+                        if (text.includes("Éxito")) {
+                            feedbackDiv.className = 'success';
+                            feedbackDiv.innerText = '✅ ¡Guardado en Google Drive!';
+                        } else {
+                            feedbackDiv.className = 'error';
+                            feedbackDiv.innerText = '❌ Error al guardar en Drive. Revisa la consola para más detalles.';
+                        }
+                    } catch (error) {
+                        console.error("Error en la conexión con Apps Script:", error);
+                        feedbackDiv.className = 'error';
+                        feedbackDiv.innerText = '❌ Error de conexión. Revisa la consola del navegador.';
+                    }
+                }
+
+                async function confirmarTodo(telefonoDestino) {
+                    const numeroPedido = "102"; 
+                    const obra = document.getElementById('obra').innerText.trim();
+                    const observaciones = document.getElementById('observaciones').innerText.trim();
+                    const filas = document.querySelectorAll('#tabla-materiales tbody tr');
+                    let materiales = [];
+
+                    filas.forEach(fila => {
+                        const celdas = fila.querySelectorAll('td');
+                        const codigo = celdas[0]?.innerText.trim();
+                        const descripcion = celdas[1]?.innerText.trim();
+                        const cantidad = celdas[2]?.innerText.trim();
+                        const unidad = celdas[3]?.innerText.trim();
+
+                        if (descripcion && cantidad) {
+                            materiales.push({ codigo, descripcion, cantidad, unidad });
+                        }
+                    });
+
+                    let mensaje = "📦 *Confirmación de Pedido N.º " + numeroPedido + "*\n";
+                    mensaje += "🏗️ *Obra:* " + obra + "\n\n";
+                    mensaje += "📋 *Materiales Recibidos:*\n";
+
+                    materiales.forEach(m => {
+                        mensaje += "🔹 " + m.descripcion + " — *" + m.cantidad + " " + m.unidad + "*\n";
+                    });
+
+                    if (observaciones) {
+                        mensaje += "\n📝 *Observaciones:* " + observaciones;
+                    }
+
+                    const mensajeEncoded = encodeURIComponent(mensaje);
+                    const urlWhatsApp = "https://wa.me/" + telefonoDestino + "?text=" + mensajeEncoded;
+
+                    window.open(urlWhatsApp, '_blank');
+
+                    await guardarEnDrive(numeroPedido, obra, materiales, observaciones);
+                }
+            </script>
+        </head>
+        <body>
+            <h2>Confirmación de Pedido #102</h2>
+            <p><strong>Obra:</strong> <span id="obra" class="editable" contenteditable="true">EDIFICIO VENTO 3 NOV</span></p>
+            <table id="tabla-materiales">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Descripción</th>
+                        <th>Cantidad</th>
+                        <th>Unidad</th>
+                    </tr>
+                </thead>
+                <tbody>
+        
+            <tr>
+                <td contenteditable="true">SPRAY0001</td>
+                <td contenteditable="true">SPRAY VARIOS COLORES</td>
+                <td contenteditable="true">5</td>
+                <td contenteditable="true">UND-USADOS</td>
+            </tr>
+            
+            <tr>
+                <td contenteditable="true">ALAM0002</td>
+                <td contenteditable="true">ALAMBRE GALV No. 18</td>
+                <td contenteditable="true">4</td>
+                <td contenteditable="true">LB</td>
+            </tr>
+            
+            <tr>
+                <td contenteditable="true">CAJA0001</td>
+                <td contenteditable="true">CAJA 4X4</td>
+                <td contenteditable="true">13</td>
+                <td contenteditable="true">UND</td>
+            </tr>
+            
+            <tr>
+                <td contenteditable="true">CAJE0001</td>
+                <td contenteditable="true">CAJETIN OCTOGONAL GRANDE</td>
+                <td contenteditable="true">2</td>
+                <td contenteditable="true">UND</td>
+            </tr>
+            
+                </tbody>
+            </table>
+            <p><strong>Observaciones:</strong></p>
+            <div id="observaciones" class="editable" contenteditable="true"></div>
+            <br>
+            <button class="btn btn-azul" onclick="agregarFila()">➕ Agregar Material</button>
+            <button class="btn" onclick="confirmarTodo('593993986320')">✅ Confirmar vía WhatsApp y Guardar</button>
+            <div id="feedback-message"></div>
+        </body>
+        </html>
+        
